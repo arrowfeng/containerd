@@ -90,15 +90,16 @@ func (c *criService) stopPodSandbox(ctx context.Context, sandbox sandboxstore.Sa
 	// Teardown network for sandbox.
 	if sandbox.NetNS != nil {
 		netStop := time.Now()
-		// Use empty netns path if netns is not available. This is defined in:
-		// https://github.com/containernetworking/cni/blob/v0.7.0-alpha1/SPEC.md
+		// Check if netns is already closed. If closed, skip network teardown
+		// since network resources are already cleaned up with the netns.
 		if closed, err := sandbox.NetNS.Closed(); err != nil {
 			return fmt.Errorf("failed to check network namespace closed: %w", err)
 		} else if closed {
-			sandbox.NetNSPath = ""
-		}
-		if err := c.teardownPodNetwork(ctx, sandbox); err != nil {
-			return fmt.Errorf("failed to destroy network for sandbox %q: %w", id, err)
+			log.G(ctx).WithField("sandbox", id).Debug("Network namespace is already closed, skipping network teardown")
+		} else {
+			if err := c.teardownPodNetwork(ctx, sandbox); err != nil {
+				return fmt.Errorf("failed to destroy network for sandbox %q: %w", id, err)
+			}
 		}
 		if err := sandbox.NetNS.Remove(); err != nil {
 			return fmt.Errorf("failed to remove network namespace for sandbox %q: %w", id, err)
