@@ -47,6 +47,7 @@ import (
 	ptypes "github.com/containerd/containerd/protobuf/types"
 	"github.com/containerd/containerd/runtime"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
+	runscOptions "github.com/containerd/containerd/runtime/v2/runsc/options"
 	"github.com/containerd/containerd/services"
 	"github.com/containerd/typeurl/v2"
 	"github.com/opencontainers/go-digest"
@@ -700,42 +701,50 @@ func (l *local) getTaskFromContainer(ctx context.Context, container *containers.
 	return t, nil
 }
 
-// getCheckpointPath only suitable for runc runtime now
+// getCheckpointPath extracts the checkpoint image path from runtime-specific options
 func getCheckpointPath(runtime string, option *ptypes.Any) (string, error) {
 	if option == nil {
 		return "", nil
 	}
 
-	var checkpointPath string
 	v, err := typeurl.UnmarshalAny(option)
 	if err != nil {
 		return "", err
 	}
-	opts, ok := v.(*options.CheckpointOptions)
-	if !ok {
-		return "", fmt.Errorf("invalid task checkpoint option for %s", runtime)
-	}
-	checkpointPath = opts.ImagePath
 
-	return checkpointPath, nil
+	// Try runc CheckpointOptions first
+	if opts, ok := v.(*options.CheckpointOptions); ok {
+		return opts.ImagePath, nil
+	}
+
+	// Try runsc CheckpointOptions
+	if opts, ok := v.(*runscOptions.CheckpointOptions); ok {
+		return opts.ImagePath, nil
+	}
+
+	return "", fmt.Errorf("invalid task checkpoint option for %s", runtime)
 }
 
-// getRestorePath only suitable for runc runtime now
+// getRestorePath extracts the restore image path from runtime-specific options
 func getRestorePath(runtime string, option *ptypes.Any) (string, error) {
 	if option == nil {
 		return "", nil
 	}
 
-	var restorePath string
 	v, err := typeurl.UnmarshalAny(option)
 	if err != nil {
 		return "", err
 	}
-	opts, ok := v.(*options.Options)
-	if !ok {
-		return "", fmt.Errorf("invalid task create option for %s", runtime)
-	}
-	restorePath = opts.CriuImagePath
 
-	return restorePath, nil
+	// Try runc Options first
+	if opts, ok := v.(*options.Options); ok {
+		return opts.CriuImagePath, nil
+	}
+
+	// Try runsc Options
+	if opts, ok := v.(*runscOptions.Options); ok {
+		return opts.CheckpointPath, nil
+	}
+
+	return "", fmt.Errorf("invalid task create option for %s", runtime)
 }

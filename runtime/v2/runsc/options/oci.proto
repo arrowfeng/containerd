@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package containerd.runsc.v1;
+
+option go_package = "github.com/containerd/containerd/runtime/v2/runsc/options;options";
+
+// Options for configuring the runsc (gVisor) runtime
+message Options {
+	// path to the root directory for runsc state
+	string root = 1;
+	// binary name or path to the runsc binary
+	string binary_name = 2;
+	// place the shim in a cgroup
+	string shim_cgroup = 3;
+	// set the I/O's pipes uid
+	uint32 io_uid = 4;
+	// set the I/O's pipes gid
+	uint32 io_gid = 5;
+	// runsc platform type (ptrace, kvm, etc.)
+	string platform = 6;
+	// runsc network type (sandbox, host, none)
+	string network = 7;
+	// enable debug logging in runsc
+	bool debug = 8;
+	// path to debug log file
+	string debug_log = 9;
+	// path to checkpoint image for restore
+	string checkpoint_path = 10;
+}
+
+// CheckpointOptions for checkpointing a container
+message CheckpointOptions {
+	// exit the container after a checkpoint
+	bool exit = 1;
+	// checkpoint image path
+	string image_path = 2;
+	// compress checkpoint image
+	bool compress = 3;
+}
+
+// ProcessDetails contains process-specific information
+message ProcessDetails {
+	// exec process id if the process is managed by a shim
+	string exec_id = 1;
+}
